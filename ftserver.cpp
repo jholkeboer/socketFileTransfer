@@ -21,6 +21,7 @@ Directory reading based on UNIX man pages: http://www.manpagez.com/man/3/opendir
 #include <netinet/in.h>
 #include <netdb.h>
 #include <signal.h>
+#include <dirent.h>
 
 void signal_handler(int sig) {
     if (sig == SIGINT) {
@@ -36,17 +37,19 @@ void signal_handler(int sig) {
 int main(int argc, char *argv[]) {
     int port, initial_sock, connected_sock, data_sock, backlog = 5, 
         stop = 0, reuse = 1, first = 1, i = 0, j = 0, data_port_number;
-    int * dp;
-    int * directory;
+    struct dirent * dp;
+    DIR * directory;
     char buffer[1024];
     char message[1024];
     struct sockaddr_in server_address, client_address, data_server_address;
+    //struct sockaddr data_server_addr;
     struct hostent *data_server;
     socklen_t client_length;
     char char_handle[12];
     char quit[6] = "\\quit";
-    char list[2] = "-l";
-    char get[2] = "-g";
+    char list[3] = "-l";
+    char get[3] = "-g";
+    char newline = '\n';
     char client_host[1024];
     char data_port[1024];
     char command[2];
@@ -118,7 +121,10 @@ int main(int argc, char *argv[]) {
             printf("Connection Failed. Exiting.\n");
             exit(1);        
         }
-        client_host = getnameinfo(&client_address, sizeof(&client_address), client_host, sizeof(client_host), NULL, NULL, 0);
+        
+        // get client hostname
+        getpeername(connected_sock, (struct sockaddr*) &client_address, &client_length);
+        getnameinfo((struct sockaddr*) &client_address, sizeof(client_address), client_host, sizeof(client_host), NULL, 0, 0);
         
         printf("Accepted connection from client.\n");
         printf("Client hostname is %s.\n", client_host);
@@ -135,7 +141,7 @@ int main(int argc, char *argv[]) {
                 //read command (first two letters)
                 i = 0;
                 for (i = 0; i < 2; i++) {
-                    command[i] = buffer[i]
+                    command[i] = buffer[i];
                 }
                 if (strcmp(command,list) == 0) {
                     while (buffer[i] != '\t') {
@@ -160,7 +166,7 @@ int main(int argc, char *argv[]) {
                     data_server_address.sin_family = AF_INET;
                     bcopy((char *) data_server->h_addr, (char *) &data_server_address.sin_addr.s_addr, data_server->h_length);
                     data_server_address.sin_port = htons(data_port_number);
-                    if (connect(data_sock,(struct data_server_address *) &data_server_address,sizeof(data_server_address)) < 0) {
+                    if (connect(data_sock,(struct sockaddr *) &data_server_address,sizeof(data_server_address)) < 0) {
                         printf("Could not make data connection to client.\n");
                     }
                     
@@ -179,7 +185,7 @@ int main(int argc, char *argv[]) {
                             i = 0;
                         }
                         strcpy(buffer + (i * sizeof(int)), dp->d_name);
-                        strcpy(buffer + (i * sizeof(int)) + (dp->namlen * sizeof(int)), '\n');
+                        strcpy(buffer + (i * sizeof(int)) + (dp->d_namlen * sizeof(int)), &newline);
                     }
                     close(data_sock);
                 } else if (strcmp(command,get) == 0) {
