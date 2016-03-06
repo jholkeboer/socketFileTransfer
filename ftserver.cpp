@@ -35,7 +35,9 @@ void signal_handler(int sig) {
 
 int main(int argc, char *argv[]) {
     int port, initial_sock, connected_sock, data_sock, backlog = 5, 
-        stop = 0, reuse = 1, first = 1, i = 0, j = 0, data_port_number, dp, directory;
+        stop = 0, reuse = 1, first = 1, i = 0, j = 0, data_port_number;
+    int * dp;
+    int * directory;
     char buffer[1024];
     char message[1024];
     struct sockaddr_in server_address, client_address, data_server_address;
