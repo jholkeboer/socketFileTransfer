@@ -12,7 +12,7 @@ import os
 
 # check for argument
 if len(sys.argv) not in [5,6]:
-    print "Usage: python chatclient.py [server host] [server port] [command] [data port] [filename]"
+    print "Usage: python ftclient.py [server host] [server port] [command] [data port] [filename]"
     sys.exit()
 
 host = sys.argv[1]
@@ -56,18 +56,18 @@ try:
         (ftserver, address) = recv_socket.accept()
         print "Connected to server."
         
-        if command = '-l':
+        if command == '-l':
             file_list = ''
             data = recv_socket.recv(1024)
             while data:
                 file_list = file_list + data
                 data = recv_socket.recv(1024)
             print file_list
-        else if command = '-g':
+        elif command == '-g':
             data = recv_socket.recv(1024)
             with open(filename, 'w') as f:
                 while data:
-                    if data = ("File not found.\n"):
+                    if data == "File not found.\n":
                         print data
                         break
                     else:

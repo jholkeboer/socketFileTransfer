@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     char newline = '\n';
     char client_host[1024];
     char data_port[1024];
-    char command[2];
+    char command[3];
     char filename[1024];
     char ch;    // used to clear buffer
     
@@ -144,6 +144,7 @@ int main(int argc, char *argv[]) {
                     command[i] = buffer[i];
                 }
                 if (strcmp(command,list) == 0) {
+                    print("Received request for file list.\n");
                     while (buffer[i] != '\t') {
                         i++;
                     }
@@ -156,6 +157,7 @@ int main(int argc, char *argv[]) {
                         j++;
                     }
                     data_port_number = atoi(data_port);
+                    printf("Data connection on port %d\n", data_port_number);
                     
                     // make data connection with client
                     data_sock = socket(AF_INET, SOCK_STREAM, 0);
