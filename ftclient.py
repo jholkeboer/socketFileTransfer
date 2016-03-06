@@ -42,7 +42,7 @@ try:
         if command == '-l':
             sock.send("%s\t%s\n" % (command, data_port))
         elif command == '-g':
-            sock.send("%s\t%s\t%s\n" % (command, filename, data_port))
+            sock.send("%s\t%s\t%s\n" % (command, data_port, filename))
     else:
         sock.send("%s\t\n" % command)
 
