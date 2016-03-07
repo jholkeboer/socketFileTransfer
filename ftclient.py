@@ -38,9 +38,10 @@ try:
     sock.connect((host_ip, control_port))
     recv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     recv_socket.bind((host_ip, data_port))
+    print "Listening on host %s port %d" % (host_ip, data_port)
     recv_socket.listen(5)
     (ftserver, address) = recv_socket.accept()
-    print "Listening on host %s port %d" % (host_ip, data_port)
+
     
     if command in ['-l','-g']:
         if command == '-l':
@@ -106,4 +107,7 @@ try:
     sock.send("\quit")
 except socket.gaierror:
     print 'Could not find host. Exiting.'
+    sys.exit()
+except:
+    print 'An error occurred. Exiting.'
     sys.exit()
