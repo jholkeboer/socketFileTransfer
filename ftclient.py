@@ -54,7 +54,7 @@ try:
         recv_socket.bind((host_ip, data_port))
         recv_socket.listen(5)
         (ftserver, address) = recv_socket.accept()
-        print "Connected to server."
+        print "Listening on host %s port %d" % (host_ip, data_port)
         
         if command == '-l':
             file_list = ''

@@ -6,7 +6,7 @@ Project 2
 holkeboj@onid.oregonstate.edu
 ftserver.cpp
 Server socket based on: http://www.tutorialspoint.com/unix_sockets/socket_server_example.htm
-Client data socket based on: http://www.linuxhowtos.org/data/6/client.c
+Client data socket based Beej's Guide: http://beej.us/guide/bgnet/output/html/singlepage/bgnet.html#simpleclient
 Directory reading based on UNIX man pages: http://www.manpagez.com/man/3/opendir/
 */
 
@@ -22,6 +22,7 @@ Directory reading based on UNIX man pages: http://www.manpagez.com/man/3/opendir
 #include <netdb.h>
 #include <signal.h>
 #include <dirent.h>
+#include <arpa/inet.h>
 
 void signal_handler(int sig) {
     if (sig == SIGINT) {
@@ -34,13 +35,24 @@ void signal_handler(int sig) {
     }
 }
 
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
 int main(int argc, char *argv[]) {
-    int port, initial_sock, connected_sock, data_sock, backlog = 5, 
-        stop = 0, reuse = 1, first = 1, i = 0, j = 0, data_port_number;
+    int port, initial_sock, connected_sock, data_sock, backlog = 5, rv,
+        stop = 0, reuse = 1, first = 1, i = 0, j = 0, data_port_number, bytecount;
     struct dirent * dp;
     DIR * directory;
     char buffer[1024];
     char message[1024];
+    struct addrinfo hints, *servinfo, *p; 
     struct sockaddr_in server_address, client_address, data_server_address;
     //struct sockaddr data_server_addr;
     struct hostent *data_server;
@@ -143,67 +155,106 @@ int main(int argc, char *argv[]) {
                 for (i = 0; i < 2; i++) {
                     command[i] = buffer[i];
                 }
-                if (strcmp(command,list) == 0) {
-                    printf("Received request for file list.\n");
-                    printf("%s",buffer);
+                if ((strcmp(command,list) != 0) && (strcmp(command,get) != 0)) {
+                    bzero(buffer, 1024);
+                    strcpy(buffer, "ERROR\n");
+                    if (write(connected_sock, buffer, 1024) < 0) {
+                        printf("Could not send to socket.\n");
+                    }                    
+                } else {
                     // get data port
-                    // i++;
                     j = 0;
                     while (buffer[i] != '\n') {
                         data_port[j] = buffer[i];
                         i++;
                         j++;
-                    }
+                    }   
                     data_port[j] = '\0';
-                    printf("Data port read as %s\n", data_port);
                     data_port_number = atoi(data_port);
-                    printf("Data connection on port %d\n", data_port_number);
+                    printf("Data port %d\n", data_port_number);
                     
-                    // make data connection with client
-                    data_sock = socket(AF_INET, SOCK_STREAM, 0);
-                    printf("Initialized data_sock.\n");
-                    if (data_sock < 0) {
-                        printf("Could not open data connection to client.\n");
+                    // make data connection to client
+                    memset(&hints, 0, sizeof hints);
+                    hints.ai_family = AF_INET;
+                    hints.ai_socktype = SOCK_STREAM;
+                    
+                    if ((rv = getaddrinfo(client_host, data_port, &hints, &servinfo)) != 0) {
+                        printf("Error resolving client address for data connection.\n");
+                        exit(1);
                     }
-                    bzero((char *) &data_server, sizeof(struct hostent));
-                    bzero((char *) &data_server_address, sizeof(data_server_address));
-                    printf("Reset data server address.\n");
-                    data_server_address.sin_family = AF_INET;
-                    printf("Assigned data sin_family.\n");
-                    bcopy((char *) data_server->h_addr, (char *) &data_server_address.sin_addr.s_addr, data_server->h_length);
-                    printf("Copied data server address.\n");
-                    data_server_address.sin_port = htons(data_port_number);
-                    if (connect(data_sock,(struct sockaddr *) &data_server_address,sizeof(data_server_address)) < 0) {
-                        printf("Could not make data connection to client.\n");
-                    }
-                    
-                    bzero(buffer,1024);
-                    
-                    // send directory contents
-                    directory = opendir(".");
-                    i = 0;
-                    while ((dp = readdir(directory)) != NULL) {
-                        i = i + dp->d_namlen;
-                        if (i >= 1024) {
-                            if (write(data_sock, (struct sockaddr *) &data_server_address, sizeof(data_server_address)) < 0) {
-                                printf("Error writing to socket.\n");
-                            }
-                            bzero(buffer, 1024);
-                            i = 0;
+                    // look for valid connection
+                    for (p = servinfo; p != NULL; p = p->ai_next) {
+                        if ((data_sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+                            close(data_sock);
+                            printf("Data socket invalid.\n");
+                            continue;
                         }
-                        strcpy(buffer + (i * sizeof(int)), dp->d_name);
-                        strcpy(buffer + (i * sizeof(int)) + (dp->d_namlen * sizeof(int)), &newline);
+                        
+                        if (connect(data_sock, p->ai_addr, p->ai_addrlen) == -1) {
+                            close(data_sock);
+                            printf("Coudln't connect to data socket.\n");
+                            continue;
+                        }
+                        break;
                     }
-                    close(data_sock);
-                } else if (strcmp(command,get) == 0) {
                     
-                } else {
-                    bzero(buffer, 1024);
-                    strcpy(buffer, "ERROR\n");
-                    if (write(connected_sock, buffer, 1024) < 0) {
-                        printf("Could not send to socket.\n");
+                    if (p == NULL) {
+                        close(data_sock);
+                        printf("Could not find data socket.\n");
+                        exit(1);
+                    }
+                    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *) p->ai_addr), client_host, sizeof(client_host));
+                    printf("Connecting to client on %s", client_host);
+                    freeaddrinfo(servinfo);
+                    
+                    if (strcmp(command,list) == 0) {
+                        bzero(buffer,1024);
+                        
+                        // send directory contents
+                        directory = opendir(".");
+                        i = 0;
+                        while ((dp = readdir(directory)) != NULL) {
+                            i = i + dp->d_namlen;
+                            if (i >= 1024) {
+                                if (write(data_sock, (struct sockaddr *) &data_server_address, sizeof(data_server_address)) < 0) {
+                                    printf("Error writing to socket.\n");
+                                }
+                                bzero(buffer, 1024);
+                                i = 0;
+                            }
+                            strcpy(buffer + (i * sizeof(int)), dp->d_name);
+                            strcpy(buffer + (i * sizeof(int)) + (dp->d_namlen * sizeof(int)), &newline);
+                        }
+                        close(data_sock);                        
+                    } else if (strcmp(command,get) == 0) {
+                        close(data_sock);
                     }
                 }
+                // if (strcmp(command,list) == 0) {
+                //     printf("Received request for file list.\n");
+
+                //     // make data connection with client
+                //     // data_sock = socket(AF_INET, SOCK_STREAM, 0);
+                //     // printf("Initialized data_sock.\n");
+                //     // if (data_sock < 0) {
+                //     //     printf("Could not open data connection to client.\n");
+                //     // }
+                //     // bzero((char *) &data_server, sizeof(struct hostent));
+                //     // bzero((char *) &data_server_address, sizeof(data_server_address));
+                //     // printf("Reset data server address.\n");
+                //     // data_server_address.sin_family = AF_INET;
+                //     // printf("Assigned data sin_family.\n");
+                //     // bcopy((char *) data_server->h_addr, (char *) &data_server_address.sin_addr.s_addr, data_server->h_length);
+                //     // printf("Copied data server address.\n");
+                //     // data_server_address.sin_port = htons(data_port_number);
+                //     // if (connect(data_sock,(struct sockaddr *) &data_server_address,sizeof(data_server_address)) < 0) {
+                //     //     printf("Could not make data connection to client.\n");
+                //     // }
+                    
+
+                // } else if (strcmp(command,get) == 0) {
+                    
+                // }
             } 
                 // check if \quit was received from client
                 // if (strcmp(buffer, quit) == 0) {
