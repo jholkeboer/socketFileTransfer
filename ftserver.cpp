@@ -23,7 +23,7 @@ Directory reading based on UNIX man pages: http://www.manpagez.com/man/3/opendir
 #include <netinet/in.h>
 #include <netdb.h>
 #include <signal.h>
-#include <linux/dirent.h>
+#include <dirent.h>
 #include <arpa/inet.h>
 
 void signal_handler(int sig) {
@@ -246,13 +246,13 @@ int main(int argc, char *argv[]) {
                         if (S_ISDIR(file_info.st_mode)) {
                             continue;
                         }
-                        i = i + dp->d_namlen;
+                        i = i + dp->d_reclen;
                         if (i >= 1024) {
                             break;
                         }                        
 
                         printf("%s\n", dp->d_name);
-                        write(data_sock, dp->d_name, dp->d_namlen);
+                        write(data_sock, dp->d_name, dp->d_reclen);
                     }
                     close(data_sock);
                 } else if (strcmp(command,get) == 0) {
