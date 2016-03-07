@@ -38,7 +38,6 @@ try:
     sock.connect((host_ip, control_port))
     
     if command in ['-l','-g']:
-        sock.send("%s\t\n" % command)
         if command == '-l':
             sock.send("%s\t%s\n" % (command, data_port))
         elif command == '-g':
