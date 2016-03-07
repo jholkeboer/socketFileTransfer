@@ -23,7 +23,7 @@ Directory reading based on UNIX man pages: http://www.manpagez.com/man/3/opendir
 #include <netinet/in.h>
 #include <netdb.h>
 #include <signal.h>
-#include <dirent.h>
+#include <linux/dirent.h>
 #include <arpa/inet.h>
 
 void signal_handler(int sig) {
