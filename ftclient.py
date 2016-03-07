@@ -49,6 +49,7 @@ try:
     
     
     response = sock.recv(1024)
+    print response
     if response != "ERROR\n":
         recv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         recv_socket.bind((host_ip, data_port))
@@ -61,7 +62,7 @@ try:
             data = recv_socket.recv(1024)
             while data:
                 file_list = file_list + data
-                data = recv_socket.recv(1024)
+                data = ftserver.recv(1024)
             print file_list
         elif command == '-g':
             data = recv_socket.recv(1024)
