@@ -153,12 +153,13 @@ int main(int argc, char *argv[]) {
             for (i = 0; i < 2; i++) {
                 command[i] = buffer[i];
             }
+            command[2] = '\0';
             i++;
             if ((strcmp(command,list) != 0) && (strcmp(command,get) != 0)) {
                 // Invalid command, send error message to client
                 bzero(buffer, 1024);
                 strcpy(buffer, "ERROR\0");
-                printf("Invalid command: %s", command);
+                printf("Invalid command: %s\n", command);
                 if (write(connected_sock, buffer, 1024) < 0) {
                     printf("Could not send to socket.\n");
                 }
