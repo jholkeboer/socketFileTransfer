@@ -36,6 +36,11 @@ try:
     # get host and connect socket
     host_ip = socket.gethostbyname(host)
     sock.connect((host_ip, control_port))
+    recv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    recv_socket.bind((host_ip, data_port))
+    recv_socket.listen(5)
+    (ftserver, address) = recv_socket.accept()
+    print "Listening on host %s port %d" % (host_ip, data_port)
     
     if command in ['-l','-g']:
         if command == '-l':
@@ -50,12 +55,6 @@ try:
     response = sock.recv(1024)
     print response
     if response != "ERROR\n":
-        recv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        recv_socket.bind((host_ip, data_port))
-        recv_socket.listen(5)
-        (ftserver, address) = recv_socket.accept()
-        print "Listening on host %s port %d" % (host_ip, data_port)
-        
         if command == '-l':
             file_list = ''
             data = recv_socket.recv(1024)
