@@ -40,16 +40,18 @@ try:
     print "Binding on host %s port %s" % (host_ip, data_port)
     recv_socket.bind((host_ip, data_port))
     recv_socket.listen(5)
-    ftserver, address = recv_socket.accept()
-    print "Accepted connection on %s" % address
-    
     if command in ['-l','-g']:
         if command == '-l':
             sock.send("%s%s\n" % (command, data_port))
         elif command == '-g':
             sock.send("%s\t%s\t%s\n" % (command, data_port, filename))
     else:
-        sock.send("%s\t\n" % command)
+        sock.send("%s\t\n" % command)    
+    
+    ftserver, address = recv_socket.accept()
+    print "Accepted connection on %s" % address
+    
+
 
     
     
