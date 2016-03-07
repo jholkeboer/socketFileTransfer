@@ -110,6 +110,7 @@ try:
 except socket.gaierror:
     print 'Could not find host. Exiting.'
     sys.exit()
-except:
+except e:
     print 'An error occurred. Exiting.'
+    print e
     sys.exit()
