@@ -78,7 +78,6 @@ try:
             except:
                 pass
         elif command == "-g":
-            print "Working on get."
             data = client_data_sock.recv(1024)
 
             if data.startswith("ERROR\0"):
