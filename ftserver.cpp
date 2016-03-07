@@ -249,13 +249,13 @@ int main(int argc, char *argv[]) {
                         if (S_ISDIR(file_info.st_mode)) {
                             continue;
                         }
-                        i = i + dp->d_reclen - 1;
+                        i = i + dp->d_reclen + 1;
                         if (i >= 1024) {
                             break;
                         }                        
 
                         printf("%s\n", dp->d_name);
-                        write(data_sock, dp->d_name, dp->d_reclen - 1);
+                        write(data_sock, dp->d_name, dp->d_reclen + 1);
                     }
                     close(data_sock);
                 } else if (strcmp(command,get) == 0) {
