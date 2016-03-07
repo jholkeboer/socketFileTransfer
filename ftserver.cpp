@@ -13,6 +13,7 @@ Directory reading based on UNIX man pages: http://www.manpagez.com/man/3/opendir
 #include <iostream>
 #include <limits>
 #include <stdio.h>
+#include <cstdio>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -48,7 +49,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 int main(int argc, char *argv[]) {
     int port, initial_sock, connected_sock, data_sock, backlog = 5, rv,
-        stop = 0, reuse = 1, first = 1, i = 0, j = 0, data_port_number, bytecount;
+        stop = 0, reuse = 1, first = 1, i = 0, j = 0, data_port_number, bytecount = 0;
     struct dirent * dp;
     DIR * directory;
     char buffer[1024];
@@ -68,7 +69,7 @@ int main(int argc, char *argv[]) {
     char data_port[1024];
     char command[3];
     char filename[1024];
-    char file_list[1024];
+    FILE *fp;
     char ch;    // used to clear buffer
     
     // handle sigint and sigkill
@@ -125,7 +126,7 @@ int main(int argc, char *argv[]) {
 
             // Listen for connections
             listen(initial_sock, backlog);
-
+            first = 0;
         } else {
             printf("Waiting for a new client to connect...\n");
         }
@@ -144,7 +145,6 @@ int main(int argc, char *argv[]) {
         printf("Accepted connection from client.\n");
         printf("Client hostname is %s.\n", client_host);
         data_server = gethostbyname(client_host);
-        // clear buffer
         bzero(buffer,1024);
         printf("[waiting for response...]\n");
         
@@ -157,6 +157,7 @@ int main(int argc, char *argv[]) {
             for (i = 0; i < 2; i++) {
                 command[i] = buffer[i];
             }
+            i++;
             if ((strcmp(command,list) != 0) && (strcmp(command,get) != 0)) {
                 bzero(buffer, 1024);
                 strcpy(buffer, "ERROR\0");
@@ -165,10 +166,9 @@ int main(int argc, char *argv[]) {
                 }
                 close(connected_sock);                  
             } else {
-                
                 // get data port
                 j = 0;
-                while (buffer[i] != '\n') {
+                while ((buffer[i] != '\n') && (buffer[i] != '\t')) {
                     data_port[j] = buffer[i];
                     i++;
                     j++;
@@ -176,6 +176,19 @@ int main(int argc, char *argv[]) {
                 data_port[j] = '\0';
                 data_port_number = atoi(data_port);
                 printf("Data port %d\n", data_port_number);
+                
+                // get filename if provided
+                if (buffer[i] == '\t') {
+                    bzero(filename, 1024);
+                    i++;
+                    j = 0;
+                    while (buffer[i] != '\n') {
+                        filename[j] = buffer[i];
+                        i++;
+                        j++;
+                    }
+                    filename[j] = '\0';
+                }
                 
                 // Send "OK" to client
                 bzero(buffer, 1024);
@@ -194,7 +207,8 @@ int main(int argc, char *argv[]) {
                     printf("Error resolving client address for data connection.\n");
                     exit(1);
                 }
-                // look for valid connection
+
+                // look for datavalid connection (based on Beej's guide)
                 for (p = servinfo; p != NULL; p = p->ai_next) {
                     if ((data_sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
                         close(data_sock);
@@ -217,15 +231,18 @@ int main(int argc, char *argv[]) {
                 inet_ntop(p->ai_family, get_in_addr((struct sockaddr *) p->ai_addr), client_host, sizeof(client_host));
                 printf("Connecting to client on %s port %d\n", client_host, data_port_number);
                 freeaddrinfo(servinfo);
-                
+
+                // react to commands
                 if (strcmp(command,list) == 0) {
+                    // RECEIVED LIST COMMAND
                     bzero(buffer,1024);
-                    bzero(file_list,1024);
                     printf("Sending directory contents.\n");
+
                     // send directory contents
                     directory = opendir(".");
                     i = 0;
                     while (((dp = readdir(directory)) != NULL) && (i < 1024)) {
+                        // loop through directory
                         // continue if it's not a file
                         stat(dp->d_name, &file_info);
                         if (S_ISDIR(file_info.st_mode)) {
@@ -234,22 +251,60 @@ int main(int argc, char *argv[]) {
                         i = i + dp->d_namlen;
                         if (i >= 1024) {
                             break;
-                        }
-
-                        strcpy(file_list, dp->d_name);
-                        strcpy(file_list, &newline);
-                        
+                        }                        
 
                         printf("%s\n", dp->d_name);
                         write(data_sock, dp->d_name, dp->d_namlen);
                     }
-                    // printf("%s", file_list);
-                    // if (write(data_sock, file_list, 1024) < 0) {
-                    //     printf("Error writing filenames to socket.\n");
-                    // }
                     close(data_sock);
-                    close(connected_sock);
                 } else if (strcmp(command,get) == 0) {
+                    bzero(buffer,1024);
+                    printf("Received get command.\n");
+                    if (access(filename, F_OK) != -1) {
+                        // file does not exist
+                        printf("Requested file %s does not exist.\n", filename);
+                        strcpy(buffer, "ERROR\0");
+                        // if (write(data_sock, buffer, 1024) < 0) {
+                        //     printf("Could not send error msg to socket.\n");
+                        // }
+                        write(data_sock, buffer, 1024);
+                    } else {
+                        // file exists.  send the file
+                        fp = fopen(filename, "r");
+                        
+                        // check for null file
+                        if (fp == NULL) {
+                            // file is null, send error message
+                            printf("File pointer is null for filename %s\n",filename);
+                            strcpy(buffer, "ERROR\0");
+                            if (write(data_sock, buffer, 1024) < 0) {
+                                printf("Could not send error msg to socket.\n");
+                            }
+                        } else {
+                            // read from file
+                            printf("Sending file %s", filename);
+                            fseek(fp, 0, SEEK_SET);
+                            bytecount = fread(buffer, sizeof(char), 1024, fp);
+                            printf("Initial bytecount %d\n",bytecount);
+                            while ((bytecount < 1024) && (bytecount > 0)) {
+                                printf("%s\n",buffer);
+                                buffer[bytecount] = '\0';
+                                if (write(data_sock, buffer, 1023) < 0) {
+                                    printf("Could not send file chunk to socket.\n");
+                                }    
+                            }
+                            fclose(fp);
+
+                            // insert null character at the end
+                            // while (bytecount > 0) {
+                            //     buffer[bytecount] = '\0';
+                            //     if (write(data_sock, buffer, 1023) < 0) {
+                            //         printf("Could not send file chunk to socket.\n");
+                            //     }                                          
+                            // }
+                        }
+                    }
+                    
                     close(data_sock);
                 } else {
                     printf("Didn't parse command correctly.\n");

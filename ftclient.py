@@ -43,7 +43,9 @@ try:
         if command == '-l':
             sock.send("%s%s\n" % (command, data_port))
         elif command == '-g':
-            sock.send("%s\t%s\t%s\n" % (command, data_port, filename))
+            message_to_server = "%s\t%s\t%s\n" % (command, data_port, filename)
+            print message_to_server
+            sock.send(message_to_server)
     else:
         sock.send("%s\t\n" % command)    
     
@@ -58,7 +60,7 @@ try:
         client_init_sock.bind(("", data_port))
         
         # listen for server to make data conneciton
-        print "Listening for data connection..."
+        print "Listening for data connection on port %d..." % data_port
         client_init_sock.listen(5)
         client_data_sock = client_init_sock.accept()[0]
         
@@ -66,73 +68,52 @@ try:
             file_list = ""
             data = client_data_sock.recv(1024)
             while data:
-                print data
+                file_list = file_list + data + '\n'
                 data = client_data_sock.recv(1024)
+            print "Listing the contents of the server directory..."
+            print file_list
+            try:
+                client_data_sock.shutdown(socket.SHUT_RDWR)
+                client_data_sock.close()
+            except:
+                pass
         elif command == "-g":
             print "Working on get."
-        
+            data = client_data_sock.recv(1024)
+            print data
+            if data.startswith("ERROR\0"):
+                print "File %s does not exist on server." % filename
+            else:
+                # check if filename is already in use
+                alt_file_number = 1
+                if os.path.isfile(filename):
+                    print "Filename %s already in use locally." % filename
+                    filename = filename + "_" + str(alt_file_number)
+                    while os.path.isfile(filename):
+                        alt_file_number += 1
+                        filename = filename + "_" + str(alt_file_number)
+                    print "Using alternate filename %s" % filename
+                
+                # receive data and write it to file
+                print "Beginning file transfer from %s" % host_ip
+                with open(filename, 'w') as f:
+                    while data:
+                        print data
+                        f.write(data.split('\0')[0])
+                        data = client_data_sock.recv(1024)
+                print "Transfer complete."
+            try:
+                client_data_sock.shutdown(socket.SHUT_RDWR)
+                client_data_sock.close()
+            except:
+                pass   
     else:
         print "Response: %s" % response
     
-    
-    
-    
-    # ftserver, address = recv_socket.accept()
-    # print "Accepted connection on %s" % address
-    
-    
-    # response = sock.recv(1024)
-    # print response
-    # if response != "ERROR\n":
-    #     if command == '-l':
-    #         file_list = ''
-    #         data = recv_socket.recv(1024)
-    #         while data:
-    #             file_list = file_list + data
-    #             data = ftserver.recv(1024)
-    #         print file_list
-    #     elif command == '-g':
-    #         data = recv_socket.recv(1024)
-    #         with open(filename, 'w') as f:
-    #             while data:
-    #                 if data == "File not found.\n":
-    #                     print data
-    #                     break
-    #                 else:
-    #                     f.write(data)
-    #                     data = recv_socket.recv(1024)
-        
-    #     ftserver.close()
-    # else:
-    #     print "Invalid command.  Exiting..."
-    #     sock.shutdown
-    #     sock.close()
-    #     sys.exit()
-            
 
-    # while (msg != '\quit'):
-    #     # send message
-    #     while len(msg) > 500:
-    #         print 'Your message was too long. Maximum 500 characters.'
-    #         msg = raw_input("%s> " % handle)
-    #     sock.send("%s> %s" % (handle,msg))
-            
-    #     # wait to receive message
-    #     print '[waiting for response...]'
-    #     response = sock.recv(512)
-    #     if "\quit" in response:
-    #         print "Received quit signal. Closing connection."
-    #         sys.exit()
-    #     print response
+    sock.shutdown(socket.SHUT_RDWR)
+    sock.close()
 
-    #     # input new message to send
-    #     msg = raw_input("%s> " % handle)
-    
-    # react to \quit message
-    print "Closing Connection."
-    
-    # send \quit to server
-    sock.send("\quit")
 except socket.gaierror:
     print 'Could not find host. Exiting.'
     sys.exit()
