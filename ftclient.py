@@ -40,8 +40,8 @@ try:
     print "Binding on host %s port %s" % (host_ip, data_port)
     recv_socket.bind((host_ip, data_port))
     recv_socket.listen(5)
-    (ftserver, address) = recv_socket.accept()
-
+    ftserver, address = recv_socket.accept()
+    print "Accepted connection on %s" % address
     
     if command in ['-l','-g']:
         if command == '-l':
