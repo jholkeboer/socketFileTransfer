@@ -141,170 +141,93 @@ int main(int argc, char *argv[]) {
         printf("Accepted connection from client.\n");
         printf("Client hostname is %s.\n", client_host);
         data_server = gethostbyname(client_host);
-        while (!stop) {
-            // clear buffer
-            bzero(buffer,1024);
-            printf("[waiting for response...]\n");
-            
-            // read from socket
-            if (read(connected_sock,buffer,1024) < 0) {
-                printf("Could not read from socket.\n");
+        // clear buffer
+        bzero(buffer,1024);
+        printf("[waiting for response...]\n");
+        
+        // read from socket
+        if (read(connected_sock,buffer,1024) < 0) {
+            printf("Could not read from socket.\n");
+        } else {
+            //read command (first two letters)
+            i = 0;
+            for (i = 0; i < 2; i++) {
+                command[i] = buffer[i];
+            }
+            if ((strcmp(command,list) != 0) && (strcmp(command,get) != 0)) {
+                bzero(buffer, 1024);
+                strcpy(buffer, "ERROR\n");
+                if (write(connected_sock, buffer, 1024) < 0) {
+                    printf("Could not send to socket.\n");
+                }                    
             } else {
-                //read command (first two letters)
-                i = 0;
-                for (i = 0; i < 2; i++) {
-                    command[i] = buffer[i];
+                // get data port
+                j = 0;
+                while (buffer[i] != '\n') {
+                    data_port[j] = buffer[i];
+                    i++;
+                    j++;
+                }   
+                data_port[j] = '\0';
+                data_port_number = atoi(data_port);
+                printf("Data port %d\n", data_port_number);
+                
+                // make data connection to client
+                memset(&hints, 0, sizeof hints);
+                hints.ai_family = AF_INET;
+                hints.ai_socktype = SOCK_STREAM;
+                
+                if ((rv = getaddrinfo(client_host, data_port, &hints, &servinfo)) != 0) {
+                    printf("Error resolving client address for data connection.\n");
+                    exit(1);
                 }
-                if ((strcmp(command,list) != 0) && (strcmp(command,get) != 0)) {
-                    bzero(buffer, 1024);
-                    strcpy(buffer, "ERROR\n");
-                    if (write(connected_sock, buffer, 1024) < 0) {
-                        printf("Could not send to socket.\n");
-                    }                    
-                } else {
-                    // get data port
-                    j = 0;
-                    while (buffer[i] != '\n') {
-                        data_port[j] = buffer[i];
-                        i++;
-                        j++;
-                    }   
-                    data_port[j] = '\0';
-                    data_port_number = atoi(data_port);
-                    printf("Data port %d\n", data_port_number);
-                    
-                    // make data connection to client
-                    memset(&hints, 0, sizeof hints);
-                    hints.ai_family = AF_INET;
-                    hints.ai_socktype = SOCK_STREAM;
-                    
-                    if ((rv = getaddrinfo(client_host, data_port, &hints, &servinfo)) != 0) {
-                        printf("Error resolving client address for data connection.\n");
-                        exit(1);
-                    }
-                    // look for valid connection
-                    for (p = servinfo; p != NULL; p = p->ai_next) {
-                        if ((data_sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-                            close(data_sock);
-                            printf("Data socket invalid.\n");
-                            continue;
-                        }
-                        
-                        if (connect(data_sock, p->ai_addr, p->ai_addrlen) == -1) {
-                            close(data_sock);
-                            printf("Coudln't connect to data socket.\n");
-                            continue;
-                        }
-                        break;
-                    }
-                    
-                    if (p == NULL) {
+                // look for valid connection
+                for (p = servinfo; p != NULL; p = p->ai_next) {
+                    if ((data_sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
                         close(data_sock);
-                        printf("Could not find data socket.\n");
-                        exit(1);
+                        printf("Data socket invalid.\n");
+                        continue;
                     }
-                    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *) p->ai_addr), client_host, sizeof(client_host));
-                    printf("Connecting to client on %s", client_host);
-                    freeaddrinfo(servinfo);
                     
-                    if (strcmp(command,list) == 0) {
-                        bzero(buffer,1024);
-                        
-                        // send directory contents
-                        directory = opendir(".");
-                        i = 0;
-                        while ((dp = readdir(directory)) != NULL) {
-                            i = i + dp->d_namlen;
-                            if (i >= 1024) {
-                                if (write(data_sock, (struct sockaddr *) &data_server_address, sizeof(data_server_address)) < 0) {
-                                    printf("Error writing to socket.\n");
-                                }
-                                bzero(buffer, 1024);
-                                i = 0;
+                    if (connect(data_sock, p->ai_addr, p->ai_addrlen) == -1) {
+                        close(data_sock);
+                        printf("Coudln't connect to data socket.\n");
+                        continue;
+                    }
+                    break;
+                }
+                
+                if (p == NULL) {
+                    printf("Could not find data socket.\n");
+                    exit(1);
+                }
+                inet_ntop(p->ai_family, get_in_addr((struct sockaddr *) p->ai_addr), client_host, sizeof(client_host));
+                printf("Connecting to client on %s\n", client_host);
+                freeaddrinfo(servinfo);
+                
+                if (strcmp(command,list) == 0) {
+                    bzero(buffer,1024);
+                    
+                    // send directory contents
+                    directory = opendir(".");
+                    i = 0;
+                    while ((dp = readdir(directory)) != NULL) {
+                        i = i + dp->d_namlen;
+                        if (i >= 1024) {
+                            if (write(data_sock, (struct sockaddr *) &data_server_address, sizeof(data_server_address)) < 0) {
+                                printf("Error writing to socket.\n");
                             }
-                            strcpy(buffer + (i * sizeof(int)), dp->d_name);
-                            strcpy(buffer + (i * sizeof(int)) + (dp->d_namlen * sizeof(int)), &newline);
+                            bzero(buffer, 1024);
+                            i = 0;
                         }
-                        close(data_sock);                        
-                    } else if (strcmp(command,get) == 0) {
-                        close(data_sock);
+                        strcpy(buffer + (i * sizeof(int)), dp->d_name);
+                        strcpy(buffer + (i * sizeof(int)) + (dp->d_namlen * sizeof(int)), &newline);
                     }
+                    close(data_sock);                        
+                } else if (strcmp(command,get) == 0) {
+                    close(data_sock);
                 }
-                // if (strcmp(command,list) == 0) {
-                //     printf("Received request for file list.\n");
-
-                //     // make data connection with client
-                //     // data_sock = socket(AF_INET, SOCK_STREAM, 0);
-                //     // printf("Initialized data_sock.\n");
-                //     // if (data_sock < 0) {
-                //     //     printf("Could not open data connection to client.\n");
-                //     // }
-                //     // bzero((char *) &data_server, sizeof(struct hostent));
-                //     // bzero((char *) &data_server_address, sizeof(data_server_address));
-                //     // printf("Reset data server address.\n");
-                //     // data_server_address.sin_family = AF_INET;
-                //     // printf("Assigned data sin_family.\n");
-                //     // bcopy((char *) data_server->h_addr, (char *) &data_server_address.sin_addr.s_addr, data_server->h_length);
-                //     // printf("Copied data server address.\n");
-                //     // data_server_address.sin_port = htons(data_port_number);
-                //     // if (connect(data_sock,(struct sockaddr *) &data_server_address,sizeof(data_server_address)) < 0) {
-                //     //     printf("Could not make data connection to client.\n");
-                //     // }
-                    
-
-                // } else if (strcmp(command,get) == 0) {
-                    
-                // }
-            } 
-                // check if \quit was received from client
-                // if (strcmp(buffer, quit) == 0) {
-                //     printf("Client closed the connection.\n");
-                //     shutdown(connected_sock,2);
-                //     close(connected_sock);
-                    
-                //     // set control flags
-                //     stop = 1;
-                //     first = 0;
-                // } else {
-                //     // Print received message
-                //     printf("%s\n", buffer);
-                    
-
-                //     // send message
-                //     printf("%s> ", char_handle);
-                //     bzero(buffer,512);
-                //     bzero(message,500);
-
-                //     // get user message input
-                //     std::cin.getline(message, 500);
-                    
-                //     // copy handle and message to buffer
-                //     i = 0;
-                //     while (char_handle[i] != '\0') {
-                //         buffer[i] = char_handle[i];
-                //         i++;
-                //     }
-                //     buffer[i] = '>';
-                //     i++;
-                //     buffer[i] = ' ';
-                //     i++;
-                //     strcpy(buffer + (i * sizeof(int)), message);
-                    
-                //     // check for quit signal
-                //     if (strcmp(message, quit) == 0) {
-                //         printf("Closing the connection.\n");
-                //         write(connected_sock,quit,6);
-                //         shutdown(connected_sock,2);
-                //         close(connected_sock);
-                //         stop = 1;
-                //         first = 0;
-                //     } else{
-                //         // write message to socket
-                //         if ((write(connected_sock,buffer, 512) < 0)) {
-                //             printf("Could not send to socket.\n");
-                //         }
-                //     }
-                // }
+            }
         }
     }
 
