@@ -41,7 +41,7 @@ try:
     # send command and data port to server
     if command in ['-l','-g']:
         if command == '-l':
-            sock.send("%s%s\n" % (command, data_port))
+            sock.send("%s\t%s\n" % (command, data_port))
         elif command == '-g':
             message_to_server = "%s\t%s\t%s\n" % (command, data_port, filename)
             print message_to_server

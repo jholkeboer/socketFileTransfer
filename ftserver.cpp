@@ -155,7 +155,6 @@ int main(int argc, char *argv[]) {
                 command[i] = buffer[i];
             }
             command[2] = '\0';
-            i++;
             if ((strcmp(command,list) != 0) && (strcmp(command,get) != 0)) {
                 // Invalid command, send error message to client
                 bzero(buffer, 1024);
@@ -168,6 +167,7 @@ int main(int argc, char *argv[]) {
             } else {
                 // get data port
                 j = 0;
+                i++;
                 while ((buffer[i] != '\n') && (buffer[i] != '\t')) {
                     data_port[j] = buffer[i];
                     i++;
