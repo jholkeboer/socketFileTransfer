@@ -37,13 +37,6 @@ try:
     host_ip = socket.gethostbyname(host)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.connect((host_ip, control_port))
-    # recv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # print "Binding data conn on host %s port %s" % (host_ip, data_port)
-    # recv_socket.bind((host_ip, data_port))
-    # recv_socket.listen(5)
-
-    # (ftserver, address) = recv_socket.accept()
-    # print "Listening on host %s port %d" % (host_ip, data_port)
 
     # send command and data port to server
     if command in ['-l','-g']:
@@ -74,6 +67,7 @@ try:
             data = client_data_sock.recv(1024)
             while data:
                 print data
+                data = client_data_sock.recv(1024)
         elif command == "-g":
             print "Working on get."
         

@@ -18,6 +18,7 @@ Directory reading based on UNIX man pages: http://www.manpagez.com/man/3/opendir
 #include <unistd.h>
 #include <sys/types.h> 
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <signal.h>
@@ -56,6 +57,7 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in server_address, client_address, data_server_address;
     //struct sockaddr data_server_addr;
     struct hostent *data_server;
+    struct stat file_info;
     socklen_t client_length;
     char char_handle[12];
     char quit[6] = "\\quit";
@@ -66,6 +68,7 @@ int main(int argc, char *argv[]) {
     char data_port[1024];
     char command[3];
     char filename[1024];
+    char file_list[1024];
     char ch;    // used to clear buffer
     
     // handle sigint and sigkill
@@ -217,28 +220,35 @@ int main(int argc, char *argv[]) {
                 
                 if (strcmp(command,list) == 0) {
                     bzero(buffer,1024);
+                    bzero(file_list,1024);
                     printf("Sending directory contents.\n");
                     // send directory contents
                     directory = opendir(".");
                     i = 0;
-                    while ((dp = readdir(directory)) != NULL) {
-                        i = i + dp->d_namlen;
-                        printf("%s", dp->d_name);
-                        if (i >= 1024) {
-                            if (write(data_sock, (struct sockaddr *) &data_server_address, sizeof(data_server_address)) < 0) {
-                                printf("Error writing to socket.\n");
-                            }
-                            bzero(buffer, 1024);
-                            i = 0;
+                    while (((dp = readdir(directory)) != NULL) && (i < 1024)) {
+                        // continue if it's not a file
+                        stat(dp->d_name, &file_info);
+                        if (S_ISDIR(file_info.st_mode)) {
+                            continue;
                         }
-                        strcpy(buffer + (i * sizeof(int)), dp->d_name);
-                        strcpy(buffer + (i * sizeof(int)) + (dp->d_namlen * sizeof(int)), &newline);
+                        i = i + dp->d_namlen;
+                        if (i >= 1024) {
+                            break;
+                        }
+
+                        strcpy(file_list, dp->d_name);
+                        strcpy(file_list, &newline);
+                        
+
+                        printf("%s\n", dp->d_name);
+                        write(data_sock, dp->d_name, dp->d_namlen);
                     }
-                    if (i != 0) {
-                        if (write(data_sock, (struct sockaddr *) &data_server_address, sizeof(data_server_address)) < 0) {
-                            printf("Error writing to socket.\n");
-                        }                        
-                    }                  
+                    // printf("%s", file_list);
+                    // if (write(data_sock, file_list, 1024) < 0) {
+                    //     printf("Error writing filenames to socket.\n");
+                    // }
+                    close(data_sock);
+                    close(connected_sock);
                 } else if (strcmp(command,get) == 0) {
                     close(data_sock);
                 } else {
