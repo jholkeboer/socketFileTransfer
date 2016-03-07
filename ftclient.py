@@ -68,7 +68,7 @@ try:
             file_list = ""
             data = client_data_sock.recv(1024)
             while data:
-                file_list = file_list + data + "\n"
+                file_list = file_list + data
                 data = client_data_sock.recv(1024)
             print "Listing the contents of the server directory..."
             print file_list

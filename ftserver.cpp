@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
     char data_port[1024];
     char command[3];
     int file_length;
+    char dirname[1024];
     char filename[1000];
     char filedir[1024];
     FILE *fp;
@@ -252,12 +253,14 @@ int main(int argc, char *argv[]) {
                         }
                         file_length = (dp->d_reclen - 2 - offsetof(struct dirent, d_name));
                         i = i + file_length;
+                        bzero(dirname,1024);
+                        strcpy(dirname, dp->d_name);
+                        strcpy(dirname + (file_length * sizeof(char)), "\n");
                         if (i >= 1024) {
                             break;
                         }                        
 
-                        printf("%s\n", dp->d_name);
-                        write(data_sock, dp->d_name, file_length);
+                        write(data_sock, dirname, 1024);
                     }
                     close(data_sock);
                 } else if (strcmp(command,get) == 0) {
