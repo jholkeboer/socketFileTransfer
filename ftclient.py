@@ -40,12 +40,10 @@ try:
     print "Binding on host %s port %s" % (host_ip, data_port)
     recv_socket.bind((host_ip, data_port))
     recv_socket.listen(5)
-<<<<<<< HEAD
-=======
+
     (ftserver, address) = recv_socket.accept()
     print "Listening on host %s port %d" % (host_ip, data_port)
-    
->>>>>>> parent of 017cf30... move listen message
+
     if command in ['-l','-g']:
         if command == '-l':
             sock.send("%s%s\n" % (command, data_port))
