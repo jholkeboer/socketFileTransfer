@@ -30,20 +30,22 @@ print 'Welcome to the socket file transfer client.'
 
 
 # create socket
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
 
 try:
     # get host and connect socket
     host_ip = socket.gethostbyname(host)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.connect((host_ip, control_port))
-    recv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print "Binding on host %s port %s" % (host_ip, data_port)
-    recv_socket.bind((host_ip, data_port))
-    recv_socket.listen(5)
+    # recv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # print "Binding data conn on host %s port %s" % (host_ip, data_port)
+    # recv_socket.bind((host_ip, data_port))
+    # recv_socket.listen(5)
 
-    (ftserver, address) = recv_socket.accept()
-    print "Listening on host %s port %d" % (host_ip, data_port)
+    # (ftserver, address) = recv_socket.accept()
+    # print "Listening on host %s port %d" % (host_ip, data_port)
 
+    # send command and data port to server
     if command in ['-l','-g']:
         if command == '-l':
             sock.send("%s%s\n" % (command, data_port))
@@ -52,40 +54,66 @@ try:
     else:
         sock.send("%s\t\n" % command)    
     
-    ftserver, address = recv_socket.accept()
-    print "Accepted connection on %s" % address
-    
-
-
-    
-    
+    # get initial response over control connection
     response = sock.recv(1024)
-    print response
-    if response != "ERROR\n":
-        if command == '-l':
-            file_list = ''
-            data = recv_socket.recv(1024)
-            while data:
-                file_list = file_list + data
-                data = ftserver.recv(1024)
-            print file_list
-        elif command == '-g':
-            data = recv_socket.recv(1024)
-            with open(filename, 'w') as f:
-                while data:
-                    if data == "File not found.\n":
-                        print data
-                        break
-                    else:
-                        f.write(data)
-                        data = recv_socket.recv(1024)
-        
-        ftserver.close()
-    else:
-        print "Invalid command.  Exiting..."
-        sock.shutdown
-        sock.close()
+    if response.startswith("ERROR\0"):
+        print "Received error message from server. Exiting."
         sys.exit()
+    elif response.startswith("OK\0"):
+        client_init_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        client_init_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        client_init_sock.bind(("", data_port))
+        
+        # listen for server to make data conneciton
+        print "Listening for data connection..."
+        client_init_sock.listen(5)
+        client_data_sock = client_init_sock.accept()[0]
+        
+        if command == "-l":
+            file_list = ""
+            data = client_data_sock.recv(1024)
+            while data:
+                print data
+        elif command == "-g":
+            print "Working on get."
+        
+    else:
+        print "Response: %s" % response
+    
+    
+    
+    
+    # ftserver, address = recv_socket.accept()
+    # print "Accepted connection on %s" % address
+    
+    
+    # response = sock.recv(1024)
+    # print response
+    # if response != "ERROR\n":
+    #     if command == '-l':
+    #         file_list = ''
+    #         data = recv_socket.recv(1024)
+    #         while data:
+    #             file_list = file_list + data
+    #             data = ftserver.recv(1024)
+    #         print file_list
+    #     elif command == '-g':
+    #         data = recv_socket.recv(1024)
+    #         with open(filename, 'w') as f:
+    #             while data:
+    #                 if data == "File not found.\n":
+    #                     print data
+    #                     break
+    #                 else:
+    #                     f.write(data)
+    #                     data = recv_socket.recv(1024)
+        
+    #     ftserver.close()
+    # else:
+    #     print "Invalid command.  Exiting..."
+    #     sock.shutdown
+    #     sock.close()
+    #     sys.exit()
             
 
     # while (msg != '\quit'):

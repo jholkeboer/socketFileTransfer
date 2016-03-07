@@ -156,11 +156,13 @@ int main(int argc, char *argv[]) {
             }
             if ((strcmp(command,list) != 0) && (strcmp(command,get) != 0)) {
                 bzero(buffer, 1024);
-                strcpy(buffer, "ERROR\n");
+                strcpy(buffer, "ERROR\0");
                 if (write(connected_sock, buffer, 1024) < 0) {
                     printf("Could not send to socket.\n");
-                }                    
+                }
+                close(connected_sock);                  
             } else {
+                
                 // get data port
                 j = 0;
                 while (buffer[i] != '\n') {
@@ -171,6 +173,14 @@ int main(int argc, char *argv[]) {
                 data_port[j] = '\0';
                 data_port_number = atoi(data_port);
                 printf("Data port %d\n", data_port_number);
+                
+                // Send "OK" to client
+                bzero(buffer, 1024);
+                strcpy(buffer, "OK\0");
+                if (write(connected_sock, buffer, 1024) < 0) {
+                    printf("Could not send to socket.\n");
+                }
+                sleep(1);
                 
                 // make data connection to client
                 memset(&hints, 0, sizeof hints);
@@ -202,17 +212,18 @@ int main(int argc, char *argv[]) {
                     exit(1);
                 }
                 inet_ntop(p->ai_family, get_in_addr((struct sockaddr *) p->ai_addr), client_host, sizeof(client_host));
-                printf("Connecting to client on %s\n", client_host);
+                printf("Connecting to client on %s port %d\n", client_host, data_port_number);
                 freeaddrinfo(servinfo);
                 
                 if (strcmp(command,list) == 0) {
                     bzero(buffer,1024);
-                    
+                    printf("Sending directory contents.\n");
                     // send directory contents
                     directory = opendir(".");
                     i = 0;
                     while ((dp = readdir(directory)) != NULL) {
                         i = i + dp->d_namlen;
+                        printf("%s", dp->d_name);
                         if (i >= 1024) {
                             if (write(data_sock, (struct sockaddr *) &data_server_address, sizeof(data_server_address)) < 0) {
                                 printf("Error writing to socket.\n");
@@ -223,9 +234,16 @@ int main(int argc, char *argv[]) {
                         strcpy(buffer + (i * sizeof(int)), dp->d_name);
                         strcpy(buffer + (i * sizeof(int)) + (dp->d_namlen * sizeof(int)), &newline);
                     }
-                    close(data_sock);                        
+                    if (i != 0) {
+                        if (write(data_sock, (struct sockaddr *) &data_server_address, sizeof(data_server_address)) < 0) {
+                            printf("Error writing to socket.\n");
+                        }                        
+                    }                  
                 } else if (strcmp(command,get) == 0) {
                     close(data_sock);
+                } else {
+                    printf("Didn't parse command correctly.\n");
+                    signal_handler(SIGKILL);
                 }
             }
         }
