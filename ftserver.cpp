@@ -251,7 +251,7 @@ int main(int argc, char *argv[]) {
                         if (S_ISDIR(file_info.st_mode)) {
                             continue;
                         }
-                        file_length = (dp->d_reclen - 2 - offsetof(struct dirent, dp->d_name));
+                        file_length = (dp->d_reclen - 2 - offsetof(struct dirent, d_name));
                         i = i + file_length;
                         bzero(dirname,1024);
                         strcpy(dirname, dp->d_name);
