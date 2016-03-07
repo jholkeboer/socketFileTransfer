@@ -80,7 +80,7 @@ try:
         elif command == "-g":
             print "Working on get."
             data = client_data_sock.recv(1024)
-            print data
+
             if data.startswith("ERROR\0"):
                 print "File %s does not exist on server." % filename
             else:
