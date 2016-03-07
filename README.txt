@@ -1,3 +1,8 @@
+IMPORTANT:
+Tested on flip.  If you're using flip, you must transfer between two flip sessions
+and use the corresponding hostnames.
+
+
 How to run client:
 python ftclient.py [server host] [server port] [command] [data port] [filename]
 

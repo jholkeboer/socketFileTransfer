@@ -158,6 +158,7 @@ int main(int argc, char *argv[]) {
                 // Invalid command, send error message to client
                 bzero(buffer, 1024);
                 strcpy(buffer, "ERROR\0");
+                printf("Invalid command: %s", command);
                 if (write(connected_sock, buffer, 1024) < 0) {
                     printf("Could not send to socket.\n");
                 }
