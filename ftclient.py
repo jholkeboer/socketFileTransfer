@@ -37,8 +37,8 @@ try:
     host_ip = socket.gethostbyname(host)
     sock.connect((host_ip, control_port))
     recv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print "Binding on host %s port %s" % (host_ip, data_port)
     recv_socket.bind((host_ip, data_port))
-    print "Listening on host %s port %d" % (host_ip, data_port)
     recv_socket.listen(5)
     (ftserver, address) = recv_socket.accept()
 
