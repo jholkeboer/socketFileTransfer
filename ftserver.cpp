@@ -68,7 +68,8 @@ int main(int argc, char *argv[]) {
     char client_host[1024];
     char data_port[1024];
     char command[3];
-    char filename[1024];
+    char filename[1000];
+    char filedir[1024];
     FILE *fp;
     char ch;    // used to clear buffer
     
@@ -179,7 +180,7 @@ int main(int argc, char *argv[]) {
                 
                 // get filename if provided
                 if (buffer[i] == '\t') {
-                    bzero(filename, 1024);
+                    bzero(filename, 1000);
                     i++;
                     j = 0;
                     while (buffer[i] != '\n') {
@@ -260,51 +261,38 @@ int main(int argc, char *argv[]) {
                 } else if (strcmp(command,get) == 0) {
                     bzero(buffer,1024);
                     printf("Received get command.\n");
-                    if (access(filename, F_OK) != -1) {
-                        // file does not exist
-                        printf("Requested file %s does not exist.\n", filename);
-                        strcpy(buffer, "ERROR\0");
-                        // if (write(data_sock, buffer, 1024) < 0) {
-                        //     printf("Could not send error msg to socket.\n");
-                        // }
-                        write(data_sock, buffer, 1024);
-                    } else {
-                        // file exists.  send the file
-                        fp = fopen(filename, "r");
-                        
-                        // check for null file
-                        if (fp == NULL) {
-                            // file is null, send error message
-                            printf("File pointer is null for filename %s\n",filename);
-                            strcpy(buffer, "ERROR\0");
-                            if (write(data_sock, buffer, 1024) < 0) {
-                                printf("Could not send error msg to socket.\n");
-                            }
-                        } else {
-                            // read from file
-                            printf("Sending file %s", filename);
-                            fseek(fp, 0, SEEK_SET);
-                            bytecount = fread(buffer, sizeof(char), 1024, fp);
-                            printf("Initial bytecount %d\n",bytecount);
-                            while ((bytecount < 1024) && (bytecount > 0)) {
-                                printf("%s\n",buffer);
-                                buffer[bytecount] = '\0';
-                                if (write(data_sock, buffer, 1023) < 0) {
-                                    printf("Could not send file chunk to socket.\n");
-                                }    
-                            }
-                            fclose(fp);
-
-                            // insert null character at the end
-                            // while (bytecount > 0) {
-                            //     buffer[bytecount] = '\0';
-                            //     if (write(data_sock, buffer, 1023) < 0) {
-                            //         printf("Could not send file chunk to socket.\n");
-                            //     }                                          
-                            // }
-                        }
-                    }
                     
+                    // build path
+                    bzero(filedir, 1024);
+                    strcpy(filedir, "./");
+                    strcpy(filedir + (2 * sizeof(char)), filename);
+                    
+                    // file exists.  send the file
+                    fp = fopen(filedir, "r");
+                    
+                    // check for null file
+                    if (fp == NULL) {
+                        // file is null, send error message
+                        printf("File pointer is null for filename %s\n",filename);
+                        strcpy(buffer, "ERROR\0");
+                        if (write(data_sock, buffer, 1024) < 0) {
+                            printf("Could not send error msg to socket.\n");
+                        }
+                    } else {
+                        // read from file
+                        printf("Sending file %s\n", filename);
+                        fseek(fp, 0, SEEK_SET);
+                        bytecount = fread(buffer, sizeof(char), 1023, fp);
+                        while ((bytecount < 1024) && (bytecount > 0)) {
+                            printf("%s\n",buffer);
+                            buffer[bytecount] = '\0';
+                            if (write(data_sock, buffer, 1024) < 0) {
+                                printf("Could not send file chunk to socket.\n");
+                            }
+                            bytecount = fread(buffer, sizeof(char), 1023, fp);
+                        }
+                        fclose(fp);
+                    }
                     close(data_sock);
                 } else {
                     printf("Didn't parse command correctly.\n");

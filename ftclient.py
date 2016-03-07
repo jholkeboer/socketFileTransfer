@@ -87,11 +87,12 @@ try:
                 # check if filename is already in use
                 alt_file_number = 1
                 if os.path.isfile(filename):
+                    original_filename = filename
                     print "Filename %s already in use locally." % filename
-                    filename = filename + "_" + str(alt_file_number)
+                    filename = original_filename + "_" + str(alt_file_number)
                     while os.path.isfile(filename):
                         alt_file_number += 1
-                        filename = filename + "_" + str(alt_file_number)
+                        filename = original_filename + "_" + str(alt_file_number)
                     print "Using alternate filename %s" % filename
                 
                 # receive data and write it to file
@@ -99,7 +100,7 @@ try:
                 with open(filename, 'w') as f:
                     while data:
                         print data
-                        f.write(data.split('\0')[0])
+                        f.write(data)
                         data = client_data_sock.recv(1024)
                 print "Transfer complete."
             try:
