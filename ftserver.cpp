@@ -149,6 +149,7 @@ int main(int argc, char *argv[]) {
             printf("Could not read from socket.\n");
         } else {
             //read command (first two letters)
+            printf("%s\n",buffer);
             i = 0;
             for (i = 0; i < 2; i++) {
                 command[i] = buffer[i];
