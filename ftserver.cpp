@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
         
         printf("Accepted connection from client.\n");
         printf("Client hostname is %s.\n", client_host);
-        
+        data_server = gethostbyname(client_host);
         while (!stop) {
             // clear buffer
             bzero(buffer,1024);
@@ -144,29 +144,34 @@ int main(int argc, char *argv[]) {
                     command[i] = buffer[i];
                 }
                 if (strcmp(command,list) == 0) {
-                    print("Received request for file list.\n");
-                    while (buffer[i] != '\t') {
-                        i++;
-                    }
-                    i++;
+                    printf("Received request for file list.\n");
+                    printf("%s",buffer);
                     // get data port
+                    // i++;
+                    j = 0;
                     while (buffer[i] != '\n') {
-                        j = 0;
                         data_port[j] = buffer[i];
                         i++;
                         j++;
                     }
+                    data_port[j] = '\0';
+                    printf("Data port read as %s\n", data_port);
                     data_port_number = atoi(data_port);
                     printf("Data connection on port %d\n", data_port_number);
                     
                     // make data connection with client
                     data_sock = socket(AF_INET, SOCK_STREAM, 0);
+                    printf("Initialized data_sock.\n");
                     if (data_sock < 0) {
                         printf("Could not open data connection to client.\n");
                     }
+                    bzero((char *) &data_server, sizeof(struct hostent));
                     bzero((char *) &data_server_address, sizeof(data_server_address));
+                    printf("Reset data server address.\n");
                     data_server_address.sin_family = AF_INET;
+                    printf("Assigned data sin_family.\n");
                     bcopy((char *) data_server->h_addr, (char *) &data_server_address.sin_addr.s_addr, data_server->h_length);
+                    printf("Copied data server address.\n");
                     data_server_address.sin_port = htons(data_port_number);
                     if (connect(data_sock,(struct sockaddr *) &data_server_address,sizeof(data_server_address)) < 0) {
                         printf("Could not make data connection to client.\n");
