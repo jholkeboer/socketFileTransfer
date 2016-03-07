@@ -64,6 +64,7 @@ int main(int argc, char *argv[]) {
     char client_host[1024];
     char data_port[1024];
     char command[3];
+    int file_length;
     char filename[1000];
     char filedir[1024];
     FILE *fp;
@@ -249,13 +250,14 @@ int main(int argc, char *argv[]) {
                         if (S_ISDIR(file_info.st_mode)) {
                             continue;
                         }
-                        i = i + dp->d_reclen + 1;
+                        file_length = dp->d_reclen - 2 - offsetof(struct linux_dirent, d_name))
+                        i = i + file_length;
                         if (i >= 1024) {
                             break;
                         }                        
 
                         printf("%s\n", dp->d_name);
-                        write(data_sock, dp->d_name, dp->d_reclen + 1);
+                        write(data_sock, dp->d_name, file_length);
                     }
                     close(data_sock);
                 } else if (strcmp(command,get) == 0) {
