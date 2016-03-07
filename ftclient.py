@@ -99,7 +99,6 @@ try:
                 print "Beginning file transfer from %s" % host_ip
                 with open(filename, 'w') as f:
                     while data:
-                        print data
                         f.write(data)
                         data = client_data_sock.recv(1024)
                 print "Transfer complete."
@@ -107,11 +106,11 @@ try:
                 client_data_sock.shutdown(socket.SHUT_RDWR)
                 client_data_sock.close()
             except:
-                pass   
+                pass
     else:
         print "Response: %s" % response
     
-
+    # close initial socket
     sock.shutdown(socket.SHUT_RDWR)
     sock.close()
 

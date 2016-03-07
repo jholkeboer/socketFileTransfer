@@ -37,7 +37,7 @@ void signal_handler(int sig) {
     }
 }
 
-// get sockaddr, IPv4 or IPv6:
+// get sockaddr function, from Beej's guide
 void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET) {
@@ -53,25 +53,20 @@ int main(int argc, char *argv[]) {
     struct dirent * dp;
     DIR * directory;
     char buffer[1024];
-    char message[1024];
     struct addrinfo hints, *servinfo, *p; 
     struct sockaddr_in server_address, client_address, data_server_address;
     //struct sockaddr data_server_addr;
     struct hostent *data_server;
     struct stat file_info;
     socklen_t client_length;
-    char char_handle[12];
-    char quit[6] = "\\quit";
     char list[3] = "-l";
     char get[3] = "-g";
-    char newline = '\n';
     char client_host[1024];
     char data_port[1024];
     char command[3];
     char filename[1000];
     char filedir[1024];
     FILE *fp;
-    char ch;    // used to clear buffer
     
     // handle sigint and sigkill
     signal(SIGINT, signal_handler);
@@ -160,6 +155,7 @@ int main(int argc, char *argv[]) {
             }
             i++;
             if ((strcmp(command,list) != 0) && (strcmp(command,get) != 0)) {
+                // Invalid command, send error message to client
                 bzero(buffer, 1024);
                 strcpy(buffer, "ERROR\0");
                 if (write(connected_sock, buffer, 1024) < 0) {
@@ -225,6 +221,7 @@ int main(int argc, char *argv[]) {
                     break;
                 }
                 
+                // check for null socket
                 if (p == NULL) {
                     printf("Could not find data socket.\n");
                     exit(1);
@@ -259,15 +256,13 @@ int main(int argc, char *argv[]) {
                     }
                     close(data_sock);
                 } else if (strcmp(command,get) == 0) {
+                    // file exists.  send the file
                     bzero(buffer,1024);
-                    printf("Received get command.\n");
                     
                     // build path
                     bzero(filedir, 1024);
                     strcpy(filedir, "./");
                     strcpy(filedir + (2 * sizeof(char)), filename);
-                    
-                    // file exists.  send the file
                     fp = fopen(filedir, "r");
                     
                     // check for null file
@@ -280,11 +275,10 @@ int main(int argc, char *argv[]) {
                         }
                     } else {
                         // read from file
-                        printf("Sending file %s\n", filename);
+                        printf("Sending file %s...\n", filename);
                         fseek(fp, 0, SEEK_SET);
                         bytecount = fread(buffer, sizeof(char), 1023, fp);
                         while ((bytecount < 1024) && (bytecount > 0)) {
-                            printf("%s\n",buffer);
                             buffer[bytecount] = '\0';
                             if (write(data_sock, buffer, 1024) < 0) {
                                 printf("Could not send file chunk to socket.\n");
